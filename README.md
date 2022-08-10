@@ -1,63 +1,90 @@
-# upsplus
-## UPS Plus is a new generation of UPS power management module.
-It is an `improved` version of the original UPS prototype.
-* It has been fixed the bug that UPS could not charge and automatically power off during work time. 
-* It can not only perform good battery power management, but also provide stable voltage output and RTC functions. 
-* At the same time,it support for FCP, AFC, SFCP fast charge protocol, support BC1.2 charging protocol, support battery terminal current/voltage monitoring and support two-way monitoring of charge and discharge.
-* It can provide programmable PVD function. 
-- Power Voltage Detector (PVD) can be used to detect if batteries voltage is below or above configured voltage. 
-- Once this function has been enabled, it will monitoring your batteries voltage, and you can control whether or not shut down Raspberry Pi via simple bash script or python script. 
-- This function will protect your batteries from damage caused by excessive discharge. 
-* It can provide Adjustable data sampling Rate.
-- This function allows you to adjust the data sampling rate so that you can get more detailed battery information and also it will consume some power.
-- The data sampling information can communicate with the upper computer device through the I2C protocol. 
-* UPS Plus supports the OTA firmware upgrade function. 
-- Once there is a new firmware update, it is very convenient for you to upgrade firmware for UPS Plus. The firmware upgrade can be completed only by connecting to the Internet,and execute a python script. 
-* Support battery temperature monitoring and power-down memory function.
-* UPS Plus can be set to automatically start the Raspberry Pi after the external power comes on. 
-- The programmable shutdown and forced restart function will provide you with a remote power-off restart management method. 
-- That means you don’t need to go Unplug the power cable or press the power button to cut off the power again. 
-- You can set the program to disconnect the power supply after a few seconds after the Raspberry Pi is shut down properly.
-- And you can also reconnect the power supply after a forced power failure to achieve a remote power-off and restart operation. 
-- Once it was setting up, you don't need to press power button to boot up your device which is very suitable for smart home application scenarios.
-## How to use
-* Download Repository and execute:
+# UPS Plus Daemon
+Customized daemon script for UPS Plus from GeeekPi.
+
+## Features
+* On power failure
+  * Shutdown OS after x minutes
+  * Shutdown OS on low battery voltage
+  * Power off UPS after shutdown OS
+* Auto start on power resume
+* UPS full status log
+  * Log file is rolling on day basis
+  * Old log files exceed upper limit are deleted
+* Data check & retry on read/write UPS status register
+
+## Prerequisite
+The script should be work on Raspbian 32bit & 64bit. I test it only on OctoPi which is based on Raspbian 32bit.
+
+Before installtion, be sure you have following packages installed:
+* Git
+* Python3
+
+Install these packages by (if you don't have them installed):
+```bash
+apt install git python3
+```
+
+## Installtion
+The UPS Plus daemon script can be installed by:
 ```bash
 cd ~
-curl -Lso- https://git.io/JLygb
+git clone https://github.com/isjfk/upsplus.git
+cd upsplus
+./upsPlusDaemon_install.sh
 ```
-When encountering low battery, it will automatically shut down and turn off the UPS and it will restart when AC power comes.
-## How to upgrade firmware of UPS.
-* Upgrade firmware will be via `OTA` style, `OTA` means `over the air`, it allows you `update` or `upgrade` firmware via internet.
-- 1. Make sure Raspberry Pi can access internet.
-- 2. Download Repository from `GitHub`.
+* The daemon script will be copied into: ~/bin/upsPlusDaemon.py
+* A cron job will be added into crontab. You can check the cron job by:
+  ```bash
+  $ crontab -l
+  * * * * * /usr/bin/python3 /home/pi/bin/upsPlusDaemon.py
+  ```
+* By default the script will be executed every minutes. Which means even you set powerFailureToShutdownTime to 0, the OS may still wait for 1 minutes before shutdown. However there's no way to reduce the interval since 1 minutes is the minimal interval can be set with crontab.
+* Log will be saved into: ~/log/upsPlusDaemon.log
+* A status file will be saved into: /tmp/upsPlusStatus.json
+  * The status file is required to save the power failure time, calculate shutdown timeout.
+
+## Configuration
+Change configuration by edit the daemon script:
 ```bash
-cd ~
-git clone https://github.com/geeekpi/upsplus.git
-cd upsplus/
-python3 OTA_firmware_upgrade.py
+vim ~/bin/upsPlusDaemon.py
 ```
-When `upgrade` process is finished, it will `shutdown` your Raspberry Pi automatically, and you `need` to disconnect the charger and remove all batteries from UPS and then insert the batteries again, then press the power button to turn on the UPS.
-*** NOTE: Do not assemble UPS with Raspberry Pi with Batteries in it *** 
+The configuration section is in start of the script file:
+```python
+UPS_CONFIG = {
+    # Shutdown the OS after battery voltage lower then this setting. Unit: V
+    'shutdownVoltage': 3.90,
+    # The timeout before shutdown the OS after power failure. Unit: second
+    # E.g.:
+    # Set to 10 * 60 will shutdown the OS after power failure for 10 minutes
+    # Set to 0 will shutdown the OS immediately after power failure
+    # Set to -1 will disable the timeout
+    'powerFailureToShutdownTime': 10 * 60,
+    # Command to execute to shutdown the OS
+    'shutdownCmd': 'sudo shutdown -h now',
+    # Log UPS status on read/write status file. Set to True if you want UPS status history in log
+    'logStatus.read': False,
+    'logStatus.write': True,
+    # Path to save the log
+    'logFilePath': os.getenv('HOME') + '/log/upsPlusDaemon.log',
+    # Path to save UPS status. This file is required to calculate shutdown timeout
+    'statusFilePath': '/tmp/upsPlusStatus.json',
+}
 
-## Battery List.
-* A list of Batteries used by UPSPlus users community.
+UPS_DEVICE = {
+    # Define I2C bus
+    'bus': 1,
+    # Define device i2c slave address
+    'address': 0x17,
+    # Set the sample period. Unit: min default: 2 min
+    'samplePeriod': 2,
+    # Set auto power on when charger connected. 1: enabled, 0: disabled
+    'autoPowerOn': 1,
+    # Set the threshold of UPS force power-off to prevent damage caused by battery over-discharge. Unit: V
+    'batteryProtectionVoltage': 3.50,
+    # Shutdown countdown timer. UPS will power off on timeout. Be sure OS will finish shutdown before timeout. Unit: second
+    'shutdownCountdown': 30,
+}
+```
 
-| Brand | Model | Volt | mAmp | SAMPLE_TIME | Testing | Time |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| DoublePow | ICR18650 | 3.7 | 2600 | 3 | X | 
-
-Don't forget replace PROTECT_VOLT variable value, from Battery Volt value. Example: Battery 3.6V = 3600
-
-## FAQ 
-* Q: Why does the battery light go off sometime and lights up in a while?
-- A: This is because the power chip performs battery re-sampling, and the purpose is that the data of inferior batteries is inaccurate during the sampling process.
-
-* Q: Why is the power cut off every once in a while?
-- A: Please check the battery charging current, the data discharge direction or the charging direction. If the load is too large, the charging may not be enough, which will cause this problem.
-* Q: What kind of wall charger should I use?
-- A: If the load is normal, it is recommended to use an ordinary 5V@2A charging head. If you need to carry a slightly higher load, it is recommended to use a fast charging source. We support FCP, AFC, SFCP protocols Fast charging source.
-* Q: Can I directly input 9V and 12V to the USB port?
-- A: No, if you must do this, you must remove the DP, DM and other related detection pins, and ensure that the power supply is stable.
-* Q: I heard howling, why is this?
-- A: Because of the no-load protection mechanism, the howling will disappear after the load is installed.
+## About UPS Plus
+![UPS Plus](./docs/res/UPS_V2_1.jpg) ![UPS Plus](./docs/res/UPS_V2_2.jpg) ![UPS Plus](./docs/res/UPS_V2_3.jpg)
