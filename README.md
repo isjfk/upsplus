@@ -29,7 +29,7 @@ The UPS Plus daemon script can be installed by:
 ```bash
 cd ~
 git clone https://github.com/isjfk/upsplus.git
-cd upsplus
+cd upsplus/daemon
 ./upsPlusDaemon_install.sh
 ```
 * The daemon script will be copied into: ~/bin/upsPlusDaemon.py
