@@ -8,44 +8,74 @@ from datetime import datetime
 from datetime import timezone
 import logging
 from logging.handlers import TimedRotatingFileHandler
+import configparser
 import UpsPlusDevice
 
-UPS_CONFIG = {
-    # The timeout before shutdown the OS after power failure. Unit: second
-    # E.g.:
-    # Set to 10 * 60 will shutdown the OS after power failure for 10 minutes
-    # Set to 0 will shutdown the OS immediately after power failure
-    # Set to -1 will disable the timeout
-    'powerFailureToShutdownTime': 10 * 60,
-    # Shutdown the OS after battery voltage lower then this setting. Unit: V
-    'shutdownVoltage': 3.90,
-    # Set the threshold of UPS force power-off to prevent damage caused by battery over-discharge. Unit: V
-    'batteryProtectionVoltage': 3.50,
-    # Command to execute to shutdown the OS
-    'shutdownCmd': 'sudo shutdown -h now',
-    # Main loop interval. This is the maxium time to detect power failure
-    'loopInterval': 5,
-    # Path to save the log
-    'logFilePath': '/var/log/upsplus.log',
-    # Interval to log UPS status. Set to -1 to disable the status log
-    'logStatusInterval': 60,
-    # Set auto power on when power input connected. 1: enabled, 0: disabled
-    'autoPowerOn': 1,
-    # Shutdown countdown timer. UPS will power off on timeout. Be sure OS will finish shutdown before timeout. Unit: second
-    'shutdownCountdown': 30,
-    # Set the sample period. Unit: min default: 2 min
-    'samplePeriod': 2,
-}
+
+LOG_FILE_PATH="/var/log/upsplus.log"
 
 # Create log file directory
-os.makedirs(os.path.dirname(UPS_CONFIG['logFilePath']), exist_ok=True)
+os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
 
-logFileHandler = TimedRotatingFileHandler(UPS_CONFIG['logFilePath'], when='D', interval=1, backupCount=7, encoding='utf-8', utc=True)
+logFileHandler = TimedRotatingFileHandler(LOG_FILE_PATH, when='D', interval=1, backupCount=7, encoding='utf-8', utc=True)
 logStreamHandler = logging.StreamHandler()
 logging.basicConfig(format='%(asctime)s [%(name)s][%(levelname)-4s] - %(message)s', level=logging.INFO, handlers=[logFileHandler,logStreamHandler])
 logging.Formatter.converter = time.gmtime
 
 log = logging.getLogger('UPS')
+
+
+# Read configuration from file
+CONFIG_FILE = 'upsplus.conf'
+CONFIG_PATH_LIST = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), CONFIG_FILE)),
+    os.path.abspath(os.path.join('/etc', CONFIG_FILE)),
+]
+
+config = configparser.ConfigParser()
+
+def readConfig(configPath):
+    if os.path.exists(configPath):
+        try:
+            config.read(configPath)
+            log.info("Read config: %s", configPath)
+            return True
+        except:
+            log.exception("Error read config: %s", configPath)
+    return False
+def loadConfig():
+    for configPath in CONFIG_PATH_LIST:
+        if (readConfig(configPath)):
+            return True
+    return False
+def getConfig(key, default=None):
+    if config.has_section('ups'):
+        if type(default) is int:
+            return config['ups'].getint(key, default)
+        elif type(default) is float:
+            return config['ups'].getfloat(key, default)
+        elif type(default) is bool:
+            return config['ups'].getboolean(key, default)
+        else:
+            return config['ups'].get(key, default)
+    return default
+loadConfig()
+
+UPS_CONFIG = {}
+def buildConfig(key, default):
+    UPS_CONFIG[key] = getConfig(key, default)
+
+buildConfig('powerFailureToShutdownTime', 600)
+buildConfig('shutdownVoltage', 3.80)
+buildConfig('shutdownCmd', 'sudo shutdown -h now')
+buildConfig('shutdownCountdown', 30)
+buildConfig('loopInterval', 5)
+buildConfig('logStatusInterval', 60)
+buildConfig('autoPowerOn', 1)
+buildConfig('batteryProtectionVoltage', 3.50)
+buildConfig('samplePeriod', 2)
+
+
 ups = UpsPlusDevice.get()
 
 

@@ -3,10 +3,8 @@
 
 SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
-BIN_DIR="/usr/local/lib/upsplus/"
-
-# initializing init-functions.
-. /lib/lsb/init-functions
+BIN_DIR="/usr/local/lib/upsplus"
+CONF_DIR="/etc"
 
 sudo raspi-config nonint do_i2c 0
 
@@ -85,10 +83,15 @@ echo
 echo "Create $BIN_DIR directory..."
 sudo mkdir -p $BIN_DIR
 
-# Copy daemon script.
+# Copy daemon script
 echo "Copy daemon scripts into $BIN_DIR directory..."
-sudo cp $SCRIPT_DIR/*.py $BIN_DIR
+sudo cp $SCRIPT_DIR/UpsPlusDevice.py $BIN_DIR
+sudo cp $SCRIPT_DIR/UpsPlusDaemon.py $BIN_DIR
 sudo chmod +x $BIN_DIR/*.py
+
+# Copy conf file
+echo "Copy conf file into $CONF_DIR directory..."
+sudo cp $SCRIPT_DIR/upsplus.conf $CONF_DIR
 
 # Add daemon script to systemd
 echo "Add systemd service..."
