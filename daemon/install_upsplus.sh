@@ -4,11 +4,16 @@
 SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
 BIN_DIR="/usr/local/lib/upsplus"
+SRV_DIR="/etc/systemd/system/"
 CONF_DIR="/etc"
 
+echo "Install daemon for Geeek Pi UPS Plus start..."
+
+echo
+echo "Enable i2c device..."
 sudo raspi-config nonint do_i2c 0
 
-echo "Install daemon for Geeek Pi UPS Plus start..."
+# Install apt packages
 echo
 echo "Check & install apt packages..."
 
@@ -44,8 +49,9 @@ apt_package_check python3
 apt_package_check i2c-tools
 apt_package_install
 
+# Install python pip libraries
 echo
-echo "Check & install pip libraries..."
+echo "Check & install python pip libraries..."
 
 pip_library_check() {
     local lib=$1
@@ -79,23 +85,23 @@ pip_library_install
 
 echo
 
-# Create bin folder
+# Create script directory
 echo "Create $BIN_DIR directory..."
 sudo mkdir -p $BIN_DIR
 
-# Copy daemon script
+# Copy script
 echo "Copy daemon scripts into $BIN_DIR directory..."
 sudo cp $SCRIPT_DIR/UpsPlusDevice.py $BIN_DIR
 sudo cp $SCRIPT_DIR/UpsPlusDaemon.py $BIN_DIR
 sudo chmod +x $BIN_DIR/*.py
 
 # Copy conf file
-echo "Copy conf file into $CONF_DIR directory..."
+echo "Copy conf file into $CONF_DIR/upsplus.conf ..."
 sudo cp $SCRIPT_DIR/upsplus.conf $CONF_DIR
 
-# Add daemon script to systemd
-echo "Add systemd service..."
-sudo cp $SCRIPT_DIR/upsplus.service /etc/systemd/system/
+# Add service to systemd
+echo "Add systemd service into $SRV_DIR/upsplus.service ..."
+sudo cp $SCRIPT_DIR/upsplus.service $SRV_DIR
 sudo systemctl daemon-reload
 sudo systemctl restart upsplus
 
