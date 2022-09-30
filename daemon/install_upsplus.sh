@@ -104,6 +104,7 @@ echo "Add systemd service into $SRV_DIR/upsplus.service ..."
 sudo cp $SCRIPT_DIR/upsplus.service $SRV_DIR
 sudo systemctl daemon-reload
 sudo systemctl restart upsplus
+sudo systemctl enable upsplus
 
 echo
 
