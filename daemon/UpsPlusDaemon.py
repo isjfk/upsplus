@@ -111,6 +111,9 @@ def upsLoop(context={}):
     elif upsStatus['microUsbVoltage'] > 4:
         powerInputType = 'MicroUSB'
         powerInputVoltage = upsStatus['microUsbVoltage']
+    if powerInputType and (upsStatus['inaBatteryCurrent'] < 0):
+        log.warning("Illegal ups status: powerInputType[%s] inaBatteryCurrent[%.3f], force powerInputType to empty", powerInputType, upsStatus['inaBatteryCurrent'])
+        powerInputType = ''
     powerFailure = not powerInputType
 
     newStatus = {
