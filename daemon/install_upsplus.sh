@@ -9,10 +9,6 @@ CONF_DIR="/etc"
 
 echo "Install daemon for Geeek Pi UPS Plus start..."
 
-echo
-echo "Enable i2c device..."
-sudo raspi-config nonint do_i2c 0
-
 # Install apt packages
 echo
 echo "Check & install apt packages..."
@@ -24,7 +20,7 @@ apt_package_check() {
         echo "Package $pkg has been installed"
     else
         echo "Package $pkg will be installed..."
-        apt_pkgs+="$pkg"
+        apt_pkgs+=" $pkg"
     fi
 }
 
@@ -45,11 +41,27 @@ apt_package_install() {
     fi
 }
 
+apt_package_check raspi-config
 apt_package_check python3
+apt_package_check python3-pip
+apt_package_check python3-venv
 apt_package_check i2c-tools
 apt_package_install
 
+echo
+echo "Enable i2c device..."
+sudo raspi-config nonint do_i2c 0
+
+# Create script directory
+echo "Create $BIN_DIR directory..."
+sudo mkdir -p $BIN_DIR
+
 # Install python pip libraries
+echo
+echo "Create python3 virtual environment"
+sudo python3 -m venv $BIN_DIR
+source $BIN_DIR/bin/activate
+
 echo
 echo "Check & install python pip libraries..."
 
@@ -60,7 +72,7 @@ pip_library_check() {
         echo "Library $lib has been installed"
     else
         echo "Library $lib will be installed..."
-        pip_libs+="$lib"
+        pip_libs+=" $lib"
     fi
 }
 
@@ -68,7 +80,7 @@ pip_library_install() {
     pip_libs=$(echo "$pip_libs" | xargs)
     if [[ ! -z "$pip_libs" ]]; then
         echo "# sudo pip3 install $pip_libs"
-        sudo pip3 install $pip_libs
+        sudo $BIN_DIR/bin/pip3 install $pip_libs
         if [[ $? -eq 0 ]]; then 
             echo "Library installtion succeed: $pip_libs"
         else
@@ -84,10 +96,6 @@ pip_library_check smbus2
 pip_library_install
 
 echo
-
-# Create script directory
-echo "Create $BIN_DIR directory..."
-sudo mkdir -p $BIN_DIR
 
 # Copy script
 echo "Copy daemon scripts into $BIN_DIR directory..."

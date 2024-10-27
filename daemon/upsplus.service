@@ -5,7 +5,7 @@ After=basic.target
 [Service]
 User=root
 Type=simple
-ExecStart=/usr/local/lib/upsplus/UpsPlusDaemon.py
+ExecStart=/usr/local/lib/upsplus/bin/python3 /usr/local/lib/upsplus/UpsPlusDaemon.py
 Restart=always
 RestartSec=30
 
