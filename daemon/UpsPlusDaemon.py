@@ -120,7 +120,7 @@ def upsLoop(context={}):
         'time': formatTimestamp(currentTime),
         'powerInputType': powerInputType,
         'powerInputVoltage': powerInputVoltage,
-        'batteryVoltage': upsStatus['inaBatteryVoltage']
+        'batteryVoltage': upsStatus['batteryVoltage']
     }
 
     log.info(">"*20 + " UPS Loop " + ">"*20)
